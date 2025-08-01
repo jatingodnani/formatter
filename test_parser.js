@@ -3,8 +3,7 @@ const { parser } = require('./parser.js');
 const { tokenizer } = require('./toenizer.js');
 
 // Sample input code to test the parser with an object expression
-const sampleCode = `const jatin=(a,b) => {
-  return 1}`;
+const sampleCode = `foo(a,b)`;
 
 // Function to run the test
 function runTest() {
@@ -21,15 +20,19 @@ function runTest() {
     const ast = parser(tokens);
     console.log('AST generated:', JSON.stringify(ast, null, 2));
     
-    // Check if the object expression was parsed correctly
-    const declaration = ast.body[0];
-    if (declaration.type === 'VariableDeclaration' && 
-        declaration.initializer && 
-        declaration.initializer.type === 'ObjectExpression') {
-      console.log('Success: Object expression parsed correctly.');
-      console.log('Object properties:', declaration.initializer.properties);
-    } else {
-      console.error('Failure: Object expression not found or parsed incorrectly in AST.');
+    // Check for all three for-loop variable declarations
+    const forStatements = ast.body.filter(stmt => stmt.type === 'ForStatement');
+    for (const forStmt of forStatements) {
+      if (forStmt.init && forStmt.init.type === 'VariableDeclaration') {
+        console.log(`For loop with kind: ${forStmt.init.kind}`);
+        if (!["let", "var", "const"].includes(forStmt.init.kind)) {
+          console.error('Failure: Unexpected kind in for loop variable declaration:', forStmt.init.kind);
+        } else {
+          console.log('Success: Correct kind in for loop variable declaration.');
+        }
+      } else {
+        console.error('Failure: No variable declaration found in for loop initializer.');
+      }
     }
   } catch (error) {
     console.error('Error during tokenization or parsing:', error.message);

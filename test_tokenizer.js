@@ -7,6 +7,14 @@ const sampleCode = `const arr[0]`
 
 console.log(`Sample code length: ${sampleCode.length}`);
 
+// Additional test for let/var/const keyword tokenization
+const keywordTest = 'let x = 1; var y = 2; const z = 3;';
+console.log('---');
+console.log('Testing keyword tokenization:');
+console.log('Input:', keywordTest);
+const keywordTokens = tokenizer(keywordTest);
+console.log('Tokens:', keywordTokens.map(t => ({type: t.type, value: t.value})));
+
 // Run the tokenizer on the sample code
 try {
   const tokens = tokenizer(sampleCode);

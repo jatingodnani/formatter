@@ -7,6 +7,8 @@ const TOKEN_PATTERNS = [
     //keywords
 
     {type:"CONST", regex:/^const\b/},
+    {type:"LET", regex:/^let\b/},
+    {type:"VAR", regex:/^var\b/},
   { type: "RETURN", regex: /^return\b/ }, // return key
   {type:"IF", regex:/^if\b/}, // if key
   { type: "ELSE", regex: /^else\b/ }, // else key
@@ -59,7 +61,8 @@ const TOKEN_PATTERNS = [
     {type:"COMMA", regex:/^,/}, // Comma
     {type:"COLON", regex:/^:/}, // Colon
     {type:"DOT", regex:/^\./}, // Dot (for member access)
-    , // Arrow function syntax
+    {type:"INCREMENT", regex:/^\+\+/}, // Increment operator
+    {type:"DECREMENT", regex:/^--/},
 ]
 
 
@@ -81,6 +84,11 @@ function tokenizer(sourceCode) {
   while(position<sourceCode.length) {
     
   skipWhitespace();
+
+    if (position >= sourceCode.length) {
+        break;
+    }
+
     let matched = false;
     for (const pattern of TOKEN_PATTERNS) {
       const match = sourceCode.slice(position).match(pattern.regex);

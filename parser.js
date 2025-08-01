@@ -29,6 +29,10 @@ function parser(tokens) {
             body: []
         };
         while (peek().type !== 'EOF') {
+            if (peek().type === 'SEMICOLON') {
+                consume('SEMICOLON');
+                continue;
+            }
             const statement = parseStatement();
             ast.body.push(statement);
         }
@@ -108,9 +112,9 @@ function parser(tokens) {
             return node;
         } else if (token.type === 'NUMBER' || token.type === 'IDENTIFIER' || token.type === 'LEFT_PAREN') {
             return parseExpression();
-        }else if (token.type === 'FOR') {
+        } else if (token.type === 'FOR') {
             return forStatement();
-        }else if(token.type ==="COMMENT"){
+        } else if (token.type === "COMMENT") {
             return parseComment();
         }
         // Add more statement types here as needed
@@ -120,20 +124,19 @@ function parser(tokens) {
     // Parse a variable declaration like 'const x = 2;'
     function parseVariableDeclaration() {
         const token = peek();
+       
         const node = {
             type: 'VariableDeclaration',
-            kind: consume(token.type).type, // Use the matched token type (CONST, LET, VAR)
+            kind: consume(token.type).type.toLowerCase(), // Use lowercase for kind (const, let, var)
             identifier: consume('IDENTIFIER').value,
             initializer: null
         };
+
         if (peek().type === 'EQUALS') {
             consume('EQUALS');
             node.initializer = parseExpression();
         }
-        // Optionally consume semicolon if required by grammar
-        if (peek().type === 'SEMICOLON') {
-            consume('SEMICOLON');
-        }
+
         return node;
     }
 
@@ -146,9 +149,6 @@ function parser(tokens) {
         consume('RETURN');
         if (peek().type !== 'SEMICOLON' && peek().type !== 'EOF') {
             node.argument = parseExpression();
-        }
-        if (peek().type === 'SEMICOLON') {
-            consume('SEMICOLON');
         }
         return node;
     }
@@ -292,7 +292,7 @@ function parser(tokens) {
         consume('RIGHT_CURLY');
         return node;
     }
-    
+
     // Parse an expression with precedence
     function parseExpression() {
         // Start parsing binary expressions with the lowest precedence (0)
@@ -303,6 +303,7 @@ function parser(tokens) {
     function parseBinaryExpression(precedence) {
         // Parse the left-hand side of the expression (primary expression)
         let left = parsePrimaryExpression();
+
         // Continue parsing as long as there are operators with higher precedence
         while (true) {
             // Get the next token (potential operator)
@@ -317,6 +318,7 @@ function parser(tokens) {
 
             //If the token is not a supported binary operator, break the loop
             if ([
+                'EQUALS',
                 'PLUS', 'MINUS', 'MULTIPLY', 'DIVIDE',
                 'GREATER_THAN', 'LESS_THAN', 'GREATER_THAN_EQUALS', 'LESS_THAN_EQUALS',
                 'EQUALS_EQUALS', 'NOT_EQUALS',
@@ -328,7 +330,18 @@ function parser(tokens) {
 
             // Consume the operator
             consume(operator.type);
-            // Parse the right-hand side of the expression with higher precedence
+           
+            if(operator.type=="EQUALS"){
+                const right = parseBinaryExpression(currentPrecedence); // right-associative
+                left = {
+                    type: 'AssignmentExpression',
+                    operator: '=',
+                    left: left,
+                    right: right
+                };
+                continue;
+            }
+            // Parse the right-hand side of the expression with higher precedence (left-associative)
             let right = parseBinaryExpression(currentPrecedence + 1);
 
             // Create a binary expression node in the AST
@@ -373,34 +386,46 @@ function parser(tokens) {
         } else if (token.type === 'UNDEFINED') {
             consume('UNDEFINED');
             expression = { type: 'Literal', value: undefined };
-        }else if(token.type=="COMMA"){
+        } else if (token.type == "COMMA") {
             consume('COMMA');
-        }else if(token.type=="LEFT_PAREN") {
+
+        } else if (token.type == "LEFT_PAREN") {
             consume('LEFT_PAREN');
             const args = [];
             while (peek().type !== 'RIGHT_PAREN' && peek().type !== 'EOF') {
-                args.push(parseExpression());
-                if (peek().type === 'COMMA') {
-                    consume('COMMA');
+                if (peek().type === 'IDENTIFIER') {
+                    args.push({
+                        type: 'Identifier',
+                        name: consume('IDENTIFIER').value
+                    });
+                    if (peek().type === 'COMMA') {
+                        consume('COMMA');
+                    }
+                } else {
+                    // If not an identifier, throw an error!
+                    throw new Error(`Invalid arrow function parameter: expected identifier but got ${peek().type} at position ${peek().position}`);
                 }
             }
             consume('RIGHT_PAREN');
-            if(peek().type === 'ARROW_FUNCTION') {
+            if (peek().type === 'ARROW_FUNCTION') {
+                
                 consume('ARROW_FUNCTION');
-                if(peek().type === 'LEFT_CURLY') {
+                if (peek().type === 'LEFT_CURLY') {
+                    console.log("hii return677");
+
                     consume('LEFT_CURLY');
                     const body = [];
+                    
                     while (peek().type !== 'RIGHT_CURLY' && peek().type !== 'EOF') {
-                        if (peek().type === 'RETURN') {
-                            console.log(`Parsing return statement at position ${peek().position}`);
-                            consume('RETURN');
+                        if (peek().type === 'RETURN') { 
+
                             body.push(parseStatement());
                         } else {
                             body.push(parseExpression());
                         }
                     }
                     consume('RIGHT_CURLY');
-                    expression = {
+                    return expression = {
                         type: 'ArrowFunctionExpression',
                         params: args,
                         body: {
@@ -408,51 +433,66 @@ function parser(tokens) {
                             body: body
                         }
                     };
+                }else{
+                   return expression = {
+                        type: "ArrowFunctionExpression",
+                        params: args,
+                        body: parseExpression()
+                    }
                 }
             }
         }
         else throw new Error(`Unexpected token type ${token.type} for expression at position ${token.position}`);
-
-       if(peek().type === 'LEFT_PAREN') {
-           consume('LEFT_PAREN');
-           const args = [];
-              while (peek().type !== 'RIGHT_PAREN' && peek().type !== 'EOF') {
+        if (peek().type === 'INCREMENT' || peek().type === 'DECREMENT') {
+            const operatorToken = consume(peek().type);
+            return {
+                type: 'UpdateExpression',
+                operator: operatorToken.value,
+                argument: expression,
+                prefix: false
+            };
+        }
+        if (peek().type === 'LEFT_PAREN') {
+            consume('LEFT_PAREN');
+            const args = [];
+            while (peek().type !== 'RIGHT_PAREN' && peek().type !== 'EOF') {
+                
                 args.push(parseExpression());
-              }
-              consume('RIGHT_PAREN');
-              expression = {
-                  type: 'CallExpression',
-                  callee: expression,
-                  arguments: args
-              };
+            }
+            consume('RIGHT_PAREN');
+            expression = {
+                type: 'CallExpression',
+                callee: expression,
+                arguments: args
+            };
 
-       }
-       while (peek().type === 'DOT'|| peek().type === 'LEFT_BRACKET') {
-           if (peek().type === 'DOT') {
-               consume('DOT');
-               const property = consume('IDENTIFIER');
-               expression = {
-                   type: 'MemberExpression',
-                   object: expression,
-                   property: {
-                       type: 'Identifier',
-                       name: property.value
-                   },
-                   computed: false
-               };
-           } else if (peek().type === 'LEFT_BRACKET') {
-               consume('LEFT_BRACKET');
-               const index = parseExpression();
-               consume('RIGHT_BRACKET');
-               expression = {
-                   type: 'MemberExpression',
-                   object: expression,
-                   property: index,
-                     computed: true
-               };
-           }
-       }
-return expression;
+        }
+        while (peek().type === 'DOT' || peek().type === 'LEFT_BRACKET') {
+            if (peek().type === 'DOT') {
+                consume('DOT');
+                const property = consume('IDENTIFIER');
+                expression = {
+                    type: 'MemberExpression',
+                    object: expression,
+                    property: {
+                        type: 'Identifier',
+                        name: property.value
+                    },
+                    computed: false
+                };
+            } else if (peek().type === 'LEFT_BRACKET') {
+                consume('LEFT_BRACKET');
+                const index = parseExpression();
+                consume('RIGHT_BRACKET');
+                expression = {
+                    type: 'MemberExpression',
+                    object: expression,
+                    property: index,
+                    computed: true
+                };
+            }
+        }
+        return expression;
     }
 
     // Get the precedence of a token type
@@ -473,6 +513,8 @@ return expression;
             case 'NOT_EQUALS':
                 return 2; // Equality operators
             case 'AND_AND':
+            case 'EQUALS':
+                return 0;
                 return 1; // Logical AND
             case 'OR_OR':
                 return 0; // Logical OR (lowest precedence)
