@@ -11,3 +11,9 @@ jobs:
     steps:
       - name: "print hello world"
         run: echo "Hello, World!"
+      - name: "print current date"
+        run: date
+      - name: "print current directory"
+        run: pwd
+      - name: "list files"
+        run: ls -la
