@@ -3,7 +3,7 @@ const { parser } = require('./parser.js');
 const { tokenizer } = require('./toenizer.js');
 
 // Sample input code to test the parser with an object expression
-const sampleCode = `foo(a,b)`;
+const sampleCode = `food(a,b)`;
 
 // Function to run the test
 function runTest() {
