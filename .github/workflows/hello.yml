@@ -4,16 +4,20 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
-  hello:
+  on-push:
     runs-on: ubuntu-latest
     steps:
-      - name: "print hello world"
-        run: echo "Hello, World!"
-      - name: "print current date"
-        run: date
-      - name: "print current directory"
-        run: pwd
-      - name: "list files"
-        run: ls -la
+      - name: "Running on push"
+        run: echo "running on push"
+     
+
+  on-pull-request:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Running on pull request"
+        run: echo "Running on pull request"
